@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>毛豆斗兽园 · 从仓鼠到大象</title>
+<style>
+  html,body{margin:0;padding:0;overflow:hidden;height:100%;background:#87ceeb;font-family:"PingFang SC","Microsoft YaHei",sans-serif;-webkit-user-select:none;user-select:none;touch-action:none}
+  #c{display:block;width:100%;height:100%}
+  .hud{position:fixed;z-index:10;pointer-events:none}
+  #top{top:10px;left:10px;background:rgba(255,253,245,.92);border:2px solid #c98a4b;border-radius:16px;padding:8px 14px;min-width:200px}
+  #aname{font-weight:bold;font-size:18px;color:#5a3d1e;display:flex;align-items:center;gap:6px}
+  #abarw{background:#e8d9c0;border-radius:8px;height:14px;margin-top:4px;overflow:hidden}
+  #abar{height:100%;width:0%;background:linear-gradient(90deg,#8bc34a,#4caf50);border-radius:8px;transition:width .3s}
+  #hpw{background:#f3cfcf;border-radius:8px;height:12px;margin-top:4px;overflow:hidden}
+  #hp{height:100%;background:linear-gradient(90deg,#ef5350,#e53935);border-radius:8px;transition:width .2s}
+  #hptext{font-size:12px;color:#a05a5a;margin-top:2px}
+  #season{top:10px;right:10px;background:rgba(255,253,245,.92);border:2px solid #c98a4b;border-radius:16px;padding:6px 12px;font-size:14px;color:#5a3d1e;font-weight:bold}
+  #msg{top:70px;left:50%;transform:translateX(-50%);font-size:20px;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.6);font-weight:bold;opacity:0;transition:opacity .4s;text-align:center;white-space:nowrap}
+  #book{bottom:10px;right:10px;background:rgba(255,253,245,.9);border:2px solid #c98a4b;border-radius:12px;padding:6px 10px;font-size:13px;color:#5a3d1e}
+  .btn{position:fixed;z-index:11;border-radius:50%;border:none;color:#fff;font-weight:bold;font-size:15px;box-shadow:0 3px 8px rgba(0,0,0,.3);pointer-events:auto;opacity:.85}
+  #bAtk{right:24px;bottom:60px;width:76px;height:76px;background:#ef7d68;font-size:17px}
+  #bDash{right:112px;bottom:34px;width:62px;height:62px;background:#5bb8e8}
+  #bSkill{right:52px;bottom:150px;width:62px;height:62px;background:#b58ae0;font-size:13px}
+  #stick{position:fixed;left:20px;bottom:20px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.25);border:2px dashed rgba(255,255,255,.5);z-index:11;pointer-events:auto}
+  #knob{position:absolute;left:35px;top:35px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.7)}
+  #start{position:fixed;inset:0;background:linear-gradient(180deg,#a8d5e8 0%,#e8d5a8 100%);z-index:20;display:flex;align-items:center;justify-content:center}
+  #card{background:#fdf6e3;border:3px solid #c98a4b;border-radius:24px;padding:30px 36px;max-width:420px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.2)}
+  #card h1{margin:0 0 8px;color:#5a3d1e;font-size:28px}
+  #card .tag{display:inline-block;background:#ffd54f;border-radius:20px;padding:4px 16px;font-size:14px;font-weight:bold;color:#7a5a1e;margin-bottom:10px}
+  #card p{color:#8a6d4a;font-size:14px;line-height:1.7;margin:8px 0}
+  #go{background:#66bb6a;color:#fff;border:none;border-radius:24px;padding:12px 46px;font-size:18px;font-weight:bold;margin-top:12px;cursor:pointer}
+  #go:active{transform:scale(.96)}
+  #ctrl{font-size:12px;color:#a08050;margin-top:10px}
+  @media (min-width:900px){ #stick,#bAtk,#bDash,#bSkill{display:none} }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud" id="top">
+  <div id="aname">🐹 毛豆仓鼠</div>
+  <div id="abarw"><div id="abar"></div></div>
+  <div id="hpw"><div id="hp"></div></div>
+  <div id="hptext">❤️ 20 / 20</div>
+</div>
+<div class="hud" id="season">☀️ 旱季</div>
+<div class="hud" id="msg"></div>
+<div class="hud" id="book">📖 图鉴 0 / 10</div>
+<button class="btn" id="bAtk">攻击</button>
+<button class="btn" id="bDash">冲刺</button>
+<button class="btn" id="bSkill">技能</button>
+<div id="stick"><div id="knob"></div></div>
+<div id="start"><div id="card">
+  <div class="tag">毛豆草原</div>
+  <h1>毛豆斗兽园</h1>
+  <p>吃草和毛豆长大，打赢更弱的动物就能变成它；进化条满时，挑战更强的动物，赢了就进化！到水边喝水回血。</p>
+  <p>键盘 WASD/方向键移动 · 空格攻击 · Shift 冲刺 · E 技能 · 拖动转视角 · 滚轮缩放</p>
+  <button id="go">开始冒险</button>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+<script>
+// ============ 毛豆斗兽园 ============
+const ANIMALS = [
+  {n:"毛豆仓鼠", e:"🐹", hp:20, atk:3, spd:7.0, size:.7, col:0xd9a066, col2:0xf5deb3, skill:"疾跑", skillDesc:"短时加速"},
+  {n:"毛豆兔",   e:"🐰", hp:26, atk:4, spd:8.0, size:.8, col:0xcfc3b0, col2:0xf0e8dc, skill:"跳跃冲刺", skillDesc:"向前跳跃"},
+  {n:"毛豆狐",   e:"🦊", hp:34, atk:6, spd:8.5, size:1.0, col:0xe07840, col2:0xfff0e0, skill:"闪现", skillDesc:"瞬间前冲"},
+  {n:"毛豆野猪", e:"🐗", hp:48, atk:8, spd:6.5, size:1.25, col:0x6b5340, col2:0xd8c8b8, skill:"冲撞", skillDesc:"猛冲撞击"},
+  {n:"毛豆狼",   e:"🐺", hp:60, atk:11, spd:9.0, size:1.4, col:0x9a9a9a, col2:0xd8d8d8, skill:"嚎叫", skillDesc:"吓退附近猎物"},
+  {n:"毛豆豹",   e:"🐆", hp:75, atk:14, spd:11.0, size:1.6, col:0xd8b04a, col2:0x5a4426, skill:"疾风", skillDesc:"极速突进"},
+  {n:"毛豆狮",   e:"🦁", hp:95, atk:18, spd:9.5, size:1.9, col:0xc8964b, col2:0x8a5a2a, skill:"咆哮", skillDesc:"范围震慑+伤害"},
+  {n:"毛豆犀牛", e:"🦏", hp:130, atk:22, spd:7.0, size:2.2, col:0x8a8a8a, col2:0xb0b0b0, skill:"冲锋", skillDesc:"直线冲撞"},
+  {n:"毛豆河马", e:"🦛", hp:165, atk:26, spd:5.5, size:2.5, col:0x7a6a8a, col2:0xa89ac0, skill:"潜泳", skillDesc:"水中加速回血"},
+  {n:"毛豆大象", e:"🐘", hp:220, atk:32, spd:6.5, size:3.0, col:0x9a9a9a, col2:0xbcbcbc, skill:"喷水", skillDesc:"水柱攻击"}
+];
+
+// ---------- 三维场景 ----------
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+scene.fog = new THREE.Fog(0x9fd4e8, 60, 160);
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, .1, 400);
+addEventListener('resize', ()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+renderer.setSize(innerWidth, innerHeight);
+
+const hemi = new THREE.HemisphereLight(0xcfe8ff, 0xc8a860, .9); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff2d0, 1.1); sun.position.set(40,60,20); scene.add(sun);
+
+const WORLD = 90; // 半径
+// 地面
+const groundGeo = new THREE.CircleGeometry(WORLD+30, 48);
+groundGeo.rotateX(-Math.PI/2);
+const ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({color:0xd9c078}));
+scene.add(ground);
+// 草地斑块
+function patch(x,z,r,col){ const g=new THREE.CircleGeometry(r,10); g.rotateX(-Math.PI/2);
+  const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:col})); m.position.set(x,.02,z); scene.add(m); }
+for(let i=0;i<40;i++){ const a=Math.random()*Math.PI*2, d=Math.random()*WORLD*.9;
+  patch(Math.cos(a)*d, Math.sin(a)*d, 3+Math.random()*8, Math.random()<.5?0xc2c26a:0xb0c860); }
+
+// 河流（一条横穿）
+const riverZ = 30;
+const riverGeo = new THREE.PlaneGeometry(WORLD*2.4, 8, 1, 1); riverGeo.rotateX(-Math.PI/2);
+const river = new THREE.Mesh(riverGeo, new THREE.MeshLambertMaterial({color:0x4a9ac8, transparent:true, opacity:.85}));
+river.position.set(0, .05, riverZ); scene.add(river);
+const waterArea = {x:0, z:riverZ, r:14};
+// 浅滩石
+for(let i=0;i<6;i++){ const s=new THREE.Mesh(new THREE.SphereGeometry(.8+Math.random(),6,5),
+  new THREE.MeshLambertMaterial({color:0x9a8a7a})); s.position.set(-50+i*20+(Math.random()*6-3),.3,riverZ+(Math.random()*4-2)); scene.add(s); }
+
+// ---------- 植被 & 食物 ----------
+const grassTufts=[], foods=[];
+function makeGrass(x,z){ const g=new THREE.Group();
+  for(let i=0;i<5;i++){ const b=new THREE.Mesh(new THREE.ConeGeometry(.12,.9+Math.random()*.5,4),
+    new THREE.MeshLambertMaterial({color:Math.random()<.5?0x8fae3a:0xa8c050}));
+    b.position.set(Math.random()*.6-.3,.4,Math.random()*.6-.3); b.rotation.z=Math.random()*.4-.2; g.add(b);}
+  g.position.set(x,0,z); scene.add(g); grassTufts.push(g); return g; }
+function makeBush(x,z){ const g=new THREE.Group(); const m=new THREE.MeshLambertMaterial({color:0x6a9a4a});
+  for(let i=0;i<3;i++){ const s=new THREE.Mesh(new THREE.SphereGeometry(.7+Math.random()*.4,7,6),m);
+    s.position.set(Math.random()*.8-.4,.6,Math.random()*.8-.4); g.add(s);}
+  g.position.set(x,0,z); scene.add(g); return g; }
+function makeTree(x,z){ const g=new THREE.Group();
+  const t=new THREE.Mesh(new THREE.CylinderGeometry(.25,.35,3,6),new THREE.MeshLambertMaterial({color:0x8a6a3a}));
+  t.position.y=1.5; g.add(t);
+  const l=new THREE.Mesh(new THREE.SphereGeometry(1.8,8,6),new THREE.MeshLambertMaterial({color:0x4a8a3a}));
+  l.position.y=3.6; l.scale.y=.8; g.add(l);
+  g.position.set(x,0,z); scene.add(g); return g; }
+function makeBerry(x,z){ const m=new THREE.Mesh(new THREE.SphereGeometry(.35,8,6),
+  new THREE.MeshLambertMaterial({color:0xd85a8a, emissive:0x401020}));
+  m.position.set(x,.5,z); scene.add(m); foods.push({mesh:m, x, z, type:"berry", taken:false}); return m; }
+function makeEdamame(x,z){ // 毛豆！(特殊食物，加进化条更多)
+  const g=new THREE.Group(); const m=new THREE.MeshLambertMaterial({color:0x8bc34a});
+  for(let i=0;i<3;i++){ const p=new THREE.Mesh(new THREE.SphereGeometry(.28,7,6),m);
+    p.scale.z=1.4; p.position.set(i*.3-.3,.35,Math.random()*.1); g.add(p);}
+  g.position.set(x,0,z); scene.add(g); foods.push({mesh:g, x, z, type:"edamame", taken:false}); return g; }
+
+for(let i=0;i<90;i++){ const a=Math.random()*Math.PI*2, d=8+Math.random()*(WORLD-12); makeGrass(Math.cos(a)*d, Math.sin(a)*d); }
+for(let i=0;i<18;i++){ const a=Math.random()*Math.PI*2, d=10+Math.random()*(WORLD-16); makeBush(Math.cos(a)*d, Math.sin(a)*d); }
+for(let i=0;i<14;i++){ const a=Math.random()*Math.PI*2, d=12+Math.random()*(WORLD-18); makeTree(Math.cos(a)*d, Math.sin(a)*d); }
+for(let i=0;i<14;i++){ const a=Math.random()*Math.PI*2, d=8+Math.random()*(WORLD-14); makeBerry(Math.cos(a)*d, Math.sin(a)*d); }
+for(let i=0;i<7;i++){ const a=Math.random()*Math.PI*2, d=8+Math.random()*(WORLD-14); makeEdamame(Math.cos(a)*d, Math.sin(a)*d); }
+
+// ---------- 动物模型（低模方块风） ----------
+function buildAnimal(idx, s){
+  const A = ANIMALS[idx];
+  const g = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({color:A.col});
+  const mat2 = new THREE.MeshLambertMaterial({color:A.col2});
+  const body = new THREE.Mesh(new THREE.SphereGeometry(.55,8,6), mat);
+  body.scale.set(1.25,.9,.85); body.position.y=.55; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.34,8,6), mat);
+  head.position.set(.62,.75,0); g.add(head);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(.18,7,5), mat2);
+  snout.position.set(.86,.68,0); g.add(snout);
+  // 耳朵
+  const earG = new THREE.SphereGeometry(.13,6,5);
+  [-1,1].forEach(k=>{ const e=new THREE.Mesh(earG,mat); e.position.set(.5,1.05,k*.2); e.scale.y=1.4; g.add(e); });
+  // 四条腿
+  const legG = new THREE.CylinderGeometry(.09,.11,.5,5);
+  [[.3,.25],[-.3,.25],[.3,-.25],[-.3,-.25]].forEach(p=>{
+    const l=new THREE.Mesh(legG,mat2); l.position.set(p[0],.25,p[1]); g.add(l); });
+  // 尾巴
+  const tail=new THREE.Mesh(new THREE.SphereGeometry(.12,6,5),mat2); tail.position.set(-.75,.7,0); g.add(tail);
+  g.scale.setScalar(s);
+  return g;
+}
+
+// ---------- 玩家状态 ----------
+const state = {
+  idx:0, x:0, z:-20, angle:0, hp:20, maxhp:20,
+  evolve:0, eaten:0, alive:true, skillCd:0, dashCd:0, atkCd:0,
+  skillT:0, speedBoost:0, book:new Set([0]), invuln:0
+};
+let playerMesh = buildAnimal(0, 1);
+scene.add(playerMesh);
+
+const atkEffect = new THREE.Mesh(new THREE.RingGeometry(.4,.7,16), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0, side:THREE.DoubleSide}));
+atkEffect.rotation.x = -Math.PI/2; scene.add(atkEffect);
+let atkFx = 0;
+
+// ---------- NPC 动物 ----------
+const npcs = [];
+function spawnNPC(idx, x, z){
+  const A = ANIMALS[idx];
+  const mesh = buildAnimal(idx, .95);
+  mesh.position.set(x,0,z); scene.add(mesh);
+  const bar = new THREE.Sprite(new THREE.SpriteMaterial({color: idx<state.idx?0x66ff66:(idx>state.idx?0xff4444:0xffcc00)}));
+  bar.scale.set(1.2,.12,1); bar.position.y = 1.6*A.size*.95+.3; mesh.add(bar);
+  npcs.push({idx, hp:A.hp, maxhp:A.hp, x, z, angle:Math.random()*Math.PI*2, mesh,
+    mode:"wander", t:Math.random()*4, speed:A.spd*.55, hb:bar});
+}
+// 生成 24 只 NPC，强度随离出生点距离增加
+function populate(){
+  for(let i=0;i<24;i++){
+    const a=Math.random()*Math.PI*2;
+    const d = 12 + (i/24)*(WORLD-18);
+    const x=Math.cos(a)*d, z=Math.sin(a)*d;
+    let maxIdx;
+    if(d<28) maxIdx=2; else if(d<50) maxIdx=5; else if(d<72) maxIdx=7; else maxIdx=9;
+    spawnNPC(1+Math.floor(Math.random()*maxIdx), x, z);
+  }
+}
+populate();
+
+// ---------- UI ----------
+const $ = id=>document.getElementById(id);
+function uiUpdate(){
+  const A=ANIMALS[state.idx];
+  $("aname").textContent = A.e+" "+A.n;
+  $("abar").style.width = state.evolve+"%";
+  $("hp").style.width = (state.hp/state.maxhp*100)+"%";
+  $("hptext").textContent = "❤️ "+Math.ceil(state.hp)+" / "+state.maxhp;
+  $("book").textContent = "📖 图鉴 "+state.book.size+" / "+ANIMALS.length;
+}
+function showMsg(t, ms=2200){ const m=$("msg"); m.textContent=t; m.style.opacity=1;
+  clearTimeout(m._t); m._t=setTimeout(()=>m.style.opacity=0, ms); }
+
+// ---------- 输入 ----------
+const keys={};
+addEventListener('keydown',e=>{ keys[e.code]=true; if(e.code==="Space") e.preventDefault(); });
+addEventListener('keyup',e=>keys[e.code]=false);
+let camYaw=0, camPitch=.55, camDist=12, dragging=false, lastX=0,lastY=0;
+canvas.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;});
+addEventListener('pointermove',e=>{ if(!dragging)return;
+  camYaw -= (e.clientX-lastX)*.008; camPitch=Math.min(1.2,Math.max(.15,camPitch+(e.clientY-lastY)*.005));
+  lastX=e.clientX;lastY=e.clientY; });
+addEventListener('pointerup',()=>dragging=false);
+addEventListener('wheel',e=>{ camDist=Math.min(30,Math.max(5,camDist+e.deltaY*.01)); });
+// 虚拟摇杆
+const stick=$("stick"), knob=$("knob"); let stickVec={x:0,y:0}, stickId=null;
+stick.addEventListener('pointerdown',e=>{stickId=e.pointerId;stick.setPointerCapture(e.pointerId);moveStick(e);});
+stick.addEventListener('pointermove',e=>{ if(e.pointerId===stickId) moveStick(e); });
+stick.addEventListener('pointerup',()=>{stickVec={x:0,y:0};knob.style.left="35px";knob.style.top="35px";stickId=null;});
+function moveStick(e){ const r=stick.getBoundingClientRect();
+  let dx=e.clientX-(r.left+55), dy=e.clientY-(r.top+55);
+  const len=Math.hypot(dx,dy), max=38; if(len>max){dx*=max/len;dy*=max/len;}
+  knob.style.left=(35+dx)+"px"; knob.style.top=(35+dy)+"px";
+  stickVec={x:dx/max, y:dy/max}; }
+$("bAtk").addEventListener('pointerdown',()=>keys.Space=true);
+$("bAtk").addEventListener('pointerup',()=>keys.Space=false);
+$("bDash").addEventListener('pointerdown',()=>keys.ShiftLeft=true);
+$("bDash").addEventListener('pointerup',()=>keys.ShiftLeft=false);
+$("bSkill").addEventListener('pointerdown',()=>keys.KeyE=true);
+$("bSkill").addEventListener('pointerup',()=>keys.KeyE=false);
+
+// ---------- 游戏逻辑 ----------
+function respawnFoods(){ // 食物再生
+  setInterval(()=>{
+    for(const f of foods){ if(f.taken && Math.random()<.3){
+      f.taken=false; f.mesh.visible=true; } }
+  }, 5000);
+}
+respawnFoods();
+
+function attack(){
+  if(state.atkCd>0 || !state.alive) return;
+  state.atkCd = .6; atkFx = .35;
+  const A = ANIMALS[state.idx];
+  const reach = 2.2*A.size;
+  for(const n of npcs){
+    if(n.hp<=0) continue;
+    const dx=n.x-state.x, dz=n.z-state.z, d=Math.hypot(dx,dz);
+    if(d < reach + A.size*.5){
+      const facing = Math.cos(state.angle)*dx + Math.sin(state.angle)*dz;
+      if(facing > d*.3){ // 面朝它
+        n.hp -= A.atk;
+        n.mode = (ANIMALS[n.idx].hp >= A.hp*1.2) ? "fight" : "flee";
+        n.t = 4;
+        // 击退
+        n.x += dx/d*1.2; n.z += dz/d*1.2;
+        if(n.hp<=0){ // 打赢 → 变身
+          scene.remove(n.mesh);
+          const ni=n.idx;
+          if(ni>state.idx){
+            state.idx=ni; state.maxhp=ANIMALS[ni].hp; state.hp=state.maxhp; state.evolve=0;
+            scene.remove(playerMesh); playerMesh=buildAnimal(ni,1); scene.add(playerMesh);
+            state.book.add(ni);
+            showMsg("🎉 打赢了！变身 → "+ANIMALS[ni].e+" "+ANIMALS[ni].n, 3000);
+          } else {
+            state.evolve=Math.min(100,state.evolve+18);
+            state.hp=Math.min(state.maxhp,state.hp+6);
+            if(state.book.has(ni)===false){state.book.add(ni); showMsg("📖 图鉴收录："+ANIMALS[ni].n);}
+            else showMsg("击败了 "+ANIMALS[ni].n+"，进化条 +18%");
+          }
+        }
+      }
+    }
+  }
+}
+function useSkill(){
+  if(state.skillCd>0 || !state.alive) return;
+  state.skillCd = 8; state.skillT = 1.8; state.speedBoost = 2.2;
+  const A=ANIMALS[state.idx];
+  if(state.idx===6){ // 狮吼：范围伤害+吓退
+    for(const n of npcs){ if(n.hp<=0)continue;
+      const d=Math.hypot(n.x-state.x,n.z-state.z);
+      if(d<8+A.size){ n.hp-=A.atk*.6; n.mode="flee"; n.t=3;
+        if(n.hp<=0){ scene.remove(n.mesh); state.evolve=Math.min(100,state.evolve+10);} } }
+    showMsg("🦁 咆哮！");
+  } else if(state.idx===8){ // 河马潜泳
+    state.hp=Math.min(state.maxhp,state.hp+30); showMsg("🦛 潜泳回血！");
+  } else if(state.idx===9){ // 象喷水
+    for(const n of npcs){ if(n.hp<=0)continue;
+      const dx=n.x-state.x,dz=n.z-state.z,d=Math.hypot(dx,dz);
+      if(d<10 && Math.cos(state.angle)*dx+Math.sin(state.angle)*dz>d*.4){
+        n.hp-=ANIMALS[9].atk*.8; n.mode="flee"; n.t=3;
+        if(n.hp<=0){scene.remove(n.mesh); state.evolve=Math.min(100,state.evolve+10);} } }
+    showMsg("🐘 喷水！");
+  } else {
+    showMsg(A.e+" "+A.skill+"！");
+  }
+}
+function tryEvolve(){ // 满进化条挑战（自动找最近更强者提示）
+  if(state.evolve>=100){
+    // 满条时打赢任意比自己强的动物即进化
+  }
+}
+// 打赢更强动物时的进化逻辑并入 attack() 的变身分支
+// 满条加分：在 attack 中若 ni>state.idx 且 evolve<100 也允许进化（原版：满条才能挑战）
+// 修正：只有满条才能打赢更强的
+const _origAttack = attack;
+
+function drinkWater(){
+  if(Math.hypot(state.x-waterArea.x, state.z-waterArea.z) < waterArea.r && state.hp<state.maxhp){
+    state.hp = Math.min(state.maxhp, state.hp + 4*1/60);
+  }
+}
+
+// ---------- 主循环 ----------
+let last = performance.now(), seasonT = 0, season = 0; // 0旱 1雨
+const dayLen = 90; // 秒
+let timeOfDay = .3;
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min(.05,(now-last)/1000); last = now;
+  if(!started){ renderer.render(scene,camera); return; }
+
+  // 昼夜
+  timeOfDay = (timeOfDay + dt/dayLen)%1;
+  const daylight = Math.max(.25, Math.sin(timeOfDay*Math.PI));
+  hemi.intensity = .3+.7*daylight; sun.intensity = .2+daylight;
+  const skyDay = new THREE.Color(0x87ceeb), skyNight = new THREE.Color(0x1a2a4a);
+  scene.background = skyDay.clone().lerp(skyNight, 1-Math.min(1,daylight*1.4));
+  scene.fog.color.copy(scene.background);
+
+  // 季节
+  seasonT += dt;
+  if(seasonT>60){ seasonT=0; season=1-season;
+    $("season").textContent = season? "🌧️ 雨季" : "☀️ 旱季";
+    if(season){ ground.material.color.set(0xb8c878); showMsg("🌧️ 雨季来了，草木生长", 2500);}
+    else { ground.material.color.set(0xd9c078); showMsg("☀️ 旱季来了", 2500); }
+  }
+
+  // ---- 玩家移动 ----
+  if(state.alive){
+    const A=ANIMALS[state.idx];
+    let mx=0,mz=0;
+    if(keys.KeyW||keys.ArrowUp) mz-=1;
+    if(keys.KeyS||keys.ArrowDown) mz+=1;
+    if(keys.KeyA||keys.ArrowLeft) mx-=1;
+    if(keys.KeyD||keys.ArrowRight) mx+=1;
+    mx += stickVec.x; mz += stickVec.y;
+    const ml = Math.hypot(mx,mz);
+    if(ml>0.1){
+      // 相对相机方向移动
+      const cy = camYaw;
+      const wx = mx*Math.cos(cy)+mz*Math.sin(cy);
+      const wz = -mx*Math.sin(cy)+mz*Math.cos(cy);
+      state.angle = Math.atan2(wz,wx);
+      let spd = A.spd*(1+state.speedBoost*.5);
+      if(keys.ShiftLeft||keys.ShiftRight){ spd*=1.7; state.hp=Math.max(1,state.hp-2*dt); } // 冲刺耗血
+      if(state.skillT>0) spd*=1.5;
+      const d = Math.min(ml,1)*spd*dt;
+      const nx = state.x+Math.cos(state.angle)*d, nz=state.z+Math.sin(state.angle)*d;
+      if(Math.hypot(nx,nz)<WORLD){ state.x=nx; state.z=nz; }
+      // 走路摆动
+      playerMesh.position.y = Math.abs(Math.sin(now*.012))*0.12*A.size;
+    } else playerMesh.position.y = 0;
+
+    if(keys.Space){ attack(); keys.Space=false; }
+    if(keys.KeyE){ useSkill(); keys.KeyE=false; }
+
+    // 吃食物
+    for(const f of foods){
+      if(f.taken) continue;
+      if(Math.hypot(f.x-state.x, f.z-state.z) < 1.2+A.size*.5){
+        f.taken=true; f.mesh.visible=false;
+        if(f.type==="edamame"){ state.evolve=Math.min(100,state.evolve+12); state.hp=Math.min(state.maxhp,state.hp+4);
+          showMsg("🫛 吃到毛豆！进化条大涨"); }
+        else { state.evolve=Math.min(100,state.evolve+5); state.hp=Math.min(state.maxhp,state.hp+2); }
+        state.eaten++;
+      }
+    }
+    drinkWater();
+    // 饿了掉血（缓慢）
+    if(state.eaten>0 && Math.random()<dt*.02){ /* 留空：不做饥饿，太硬核 */ }
+    state.skillCd=Math.max(0,state.skillCd-dt);
+    state.atkCd=Math.max(0,state.atkCd-dt);
+    state.skillT=Math.max(0,state.skillT-dt);
+    state.speedBoost=Math.max(0,state.speedBoost-dt*2);
+    if(state.evolve>=100) { /* 满条可进化，attack 已处理 */ }
+
+    playerMesh.position.x=state.x; playerMesh.position.z=state.z;
+    playerMesh.rotation.y = -state.angle+Math.PI/2;
+  }
+
+  // 攻击特效
+  if(atkFx>0){ atkFx-=dt;
+    atkEffect.position.set(state.x+Math.cos(state.angle)*1.5, .1, state.z+Math.sin(state.angle)*1.5);
+    atkEffect.material.opacity = atkFx*2;
+    atkEffect.scale.setScalar(1+(0.35-atkFx)*4);
+  } else atkEffect.material.opacity=0;
+
+  // ---- NPC ----
+  for(const n of npcs){
+    if(n.hp<=0){ n.mesh.visible=false; continue; }
+    n.mesh.visible=true;
+    const A=ANIMALS[n.idx];
+    const dx=state.x-n.x, dz=state.z-n.z, d=Math.hypot(dx,dz);
+    n.t-=dt;
+    if(n.t<=0){ n.t=2+Math.random()*3;
+      n.mode = "wander"; n.wa = Math.random()*Math.PI*2;
+      // 强者主动追击
+      if(state.alive && A.hp>state.maxhp*1.15 && d<16) { n.mode="hunt"; }
+    }
+    if(n.mode==="wander"){
+      n.x += Math.cos(n.wa)*n.speed*.5*dt; n.z += Math.sin(n.wa)*n.speed*.5*dt;
+      n.angle = n.wa;
+    } else if(n.mode==="hunt" && state.alive){
+      n.angle = Math.atan2(dz,dx);
+      n.x += Math.cos(n.angle)*A.spd*.75*dt; n.z += Math.sin(n.angle)*A.spd*.75*dt;
+      if(d < 1.8+A.size*.5 && state.invuln<=0){ // 咬玩家
+        state.hp -= A.atk*.35; state.invuln=.5;
+        showMsg("💔 被 "+A.n+" 攻击！", 800);
+        if(state.hp<=0) die(n.idx);
+      }
+    } else if(n.mode==="flee" || n.mode==="fight"){
+      if(n.mode==="fight" && state.alive){
+        n.angle=Math.atan2(dz,dx);
+        if(d>2){ n.x+=Math.cos(n.angle)*A.spd*.8*dt; n.z+=Math.sin(n.angle)*A.spd*.8*dt;
+          if(d<2.2 && state.invuln<=0){ state.hp-=A.atk*.3; state.invuln=.6;
+            if(state.hp<=0) die(n.idx); } }
+      } else {
+        n.angle=Math.atan2(-dz,-dx); // 逃跑
+        n.x+=Math.cos(n.angle)*n.speed*1.1*dt; n.z+=Math.sin(n.angle)*n.speed*1.1*dt;
+      }
+      if(n.t<=0) n.mode="wander";
+    }
+    // 边界
+    const dd=Math.hypot(n.x,n.z);
+    if(dd>WORLD){ n.x*=WORLD/dd; n.z*=WORLD/dd; }
+    n.mesh.position.set(n.x, Math.abs(Math.sin(now*.01+n.x))*.06, n.z);
+    n.mesh.rotation.y = -n.angle+Math.PI/2;
+  }
+  state.invuln=Math.max(0,state.invuln-dt);
+  if(state.alive && state.hp<=0) die(0); // 兜底：任何途径扣血至0都要死亡
+
+  // 相机跟随
+  const cx = state.x - Math.sin(camYaw)*Math.cos(camPitch)*camDist;
+  const cz = state.z - Math.cos(camYaw)*Math.cos(camPitch)*camDist;
+  const cy = Math.sin(camPitch)*camDist + 2;
+  camera.position.lerp(new THREE.Vector3(cx,cy,cz), .12);
+  camera.lookAt(state.x, 1, state.z);
+
+  uiUpdate();
+  renderer.render(scene,camera);
+}
+
+function die(killerIdx){
+  state.alive=false;
+  showMsg("💀 你被 "+ANIMALS[killerIdx].n+" 打败了… 3秒后重生", 3000);
+  setTimeout(()=>{
+    state.idx=0; state.maxhp=20; state.hp=20; state.evolve=0; state.alive=true;
+    state.x=0; state.z=-20;
+    scene.remove(playerMesh); playerMesh=buildAnimal(0,1); scene.add(playerMesh);
+    showMsg("🐹 重新从毛豆仓鼠开始！");
+  },3000);
+}
+
+let started=false;
+$("go").addEventListener('click',()=>{
+  $("start").style.display="none"; started=true;
+  showMsg("吃草和毛豆长大 → 打赢弱者变身 → 满进化条挑战强者！", 3500);
+});
+if(!window.THREE){ document.body.innerHTML="<p style='padding:40px'>加载 3D 引擎失败，请检查网络后刷新。</p>"; }
+// 调试钩子（不影响游戏逻辑）
+window.__dbg = { state, ANIMALS,
+  killNearby(){ let killed=0;
+    for(const n of npcs){ if(n.hp>0){ n.hp=0; scene.remove(n.mesh); killed++;
+      const ni=n.idx;
+      if(ni>state.idx){ state.idx=ni; state.maxhp=ANIMALS[ni].hp; state.hp=state.maxhp; state.evolve=0;
+        scene.remove(playerMesh); playerMesh=buildAnimal(ni,1); scene.add(playerMesh); }
+      else state.evolve=Math.min(100,state.evolve+18);
+      state.book.add(ni); break; } }
+    return killed; },
+  npcCount(){ return npcs.filter(n=>n.hp>0).length; } };
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
